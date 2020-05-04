@@ -19,6 +19,7 @@
 package com.azortis.protocolvanish.bukkit.listeners;
 
 import com.azortis.protocolvanish.bukkit.ProtocolVanish;
+import com.azortis.protocolvanish.bukkit.VanishPlayer;
 import com.azortis.protocolvanish.bukkit.api.PlayerReappearEvent;
 import org.bukkit.Bukkit;
 import org.bukkit.GameMode;
@@ -47,7 +48,11 @@ public class PlayerToggleSneakListener implements Listener {
     public void onPlayerToggleSneak(PlayerToggleSneakEvent event){
         if(!event.isCancelled() && event.isSneaking()){
             Player player = event.getPlayer();
-            if(plugin.getVisibilityManager().isVanished(player) && plugin.getSettingsManager().getInvisibilitySettings().getSwitchGameMode()){
+            VanishPlayer vanishPlayer = plugin.getVanishPlayer(player.getUniqueId());
+            if (vanishPlayer == null) vanishPlayer = plugin.createVanishPlayer(player);
+            if(plugin.getVisibilityManager().isVanished(player) &&
+                    !vanishPlayer.isInvisPotion() &&
+                    plugin.getSettingsManager().getInvisibilitySettings().getSwitchGameMode()){
                 if(!pastGameModeMap.containsKey(player)) {
                     if (sneakTimer.containsKey(player) && (sneakTimer.get(player) - System.currentTimeMillis()) > -500L) {
                         sneakTimer.remove(player);

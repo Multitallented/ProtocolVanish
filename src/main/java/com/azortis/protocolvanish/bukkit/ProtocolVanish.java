@@ -33,8 +33,12 @@ import com.comphenix.protocol.wrappers.WrappedChatComponent;
 import me.clip.placeholderapi.PlaceholderAPI;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
+import org.bukkit.Color;
+import org.bukkit.Particle;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
+import org.bukkit.potion.PotionEffect;
+import org.bukkit.potion.PotionEffectType;
 
 import java.lang.reflect.InvocationTargetException;
 import java.util.HashMap;
@@ -86,6 +90,30 @@ public final class ProtocolVanish extends JavaPlugin {
         new EntityTargetLivingEntityListener(this);
         new EntityPickupItemListener(this);
         new PlayerToggleSneakListener(this);
+
+        Bukkit.getScheduler().scheduleSyncRepeatingTask(this, new Runnable() {
+            @Override
+            public void run() {
+                for (Player player : Bukkit.getOnlinePlayers()) {
+                    VanishPlayer vanishPlayer = getVanishPlayer(player.getUniqueId());
+                    if (vanishPlayer == null) vanishPlayer = createVanishPlayer(player);
+                    PotionEffect potionEffect = player.getPotionEffect(PotionEffectType.INVISIBILITY);
+                    if (!vanishPlayer.isVanished() && potionEffect != null) {
+                        vanishPlayer.setInvisPotion(true);
+                        vanishPlayer.getPlayerSettings().setNightVision(false);
+                        visibilityManager.setVanished(player.getUniqueId(), true);
+                    } else if (potionEffect == null && vanishPlayer.isVanished() && vanishPlayer.isInvisPotion()) {
+                        visibilityManager.setVanished(player.getUniqueId(), false);
+                        vanishPlayer.getPlayerSettings().setNightVision(
+                                getSettingsManager().getInvisibilitySettings().getNightVisionEffect());
+                        vanishPlayer.setInvisPotion(false);
+                    } else if (potionEffect != null && vanishPlayer.isInvisPotion()) {
+                        Particle.DustOptions dustOptions = new Particle.DustOptions(Color.GRAY, 1);
+                        player.getWorld().spawnParticle(Particle.SPELL, player.getLocation(), 1, dustOptions);
+                    }
+                }
+            }
+        },  100L, 20L);
 
         VanishAPI.setPlugin(this);
     }

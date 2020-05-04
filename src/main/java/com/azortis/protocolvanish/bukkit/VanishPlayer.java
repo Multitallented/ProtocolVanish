@@ -25,6 +25,7 @@ public class VanishPlayer {
 
     private Player player;
     private boolean vanished;
+    private boolean isInvisPotion;
     private PlayerSettings playerSettings;
 
     public VanishPlayer(Player player, boolean vanished) {
@@ -32,6 +33,12 @@ public class VanishPlayer {
         this.vanished = vanished;
     }
 
+    public void setInvisPotion(boolean isInvisPotion) {
+        this.isInvisPotion = isInvisPotion;
+    }
+    public boolean isInvisPotion() {
+        return isInvisPotion;
+    }
     public Player getPlayer() {
         return player;
     }
