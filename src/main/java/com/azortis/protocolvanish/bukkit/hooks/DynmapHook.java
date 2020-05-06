@@ -23,7 +23,6 @@ import com.azortis.protocolvanish.bukkit.api.PlayerReappearEvent;
 import com.azortis.protocolvanish.bukkit.api.PlayerVanishEvent;
 import com.azortis.protocolvanish.bukkit.settings.SettingsWrapper;
 import com.azortis.protocolvanish.bukkit.settings.wrappers.HookSettingsWrapper;
-import me.clip.placeholderapi.PlaceholderAPI;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -77,7 +76,7 @@ public class DynmapHook implements PluginHook, Listener {
             if(dynmapPlugin != null){
                 if(hookSettings.getBoolean("hideVanishPlayersOnMap", settingsSection))dynmapPlugin.setPlayerVisiblity(player, false);
                 if(hookSettings.getBoolean("broadCastFakeQuitOnVanish", settingsSection)){
-                    dynmapPlugin.sendBroadcastToWeb("", PlaceholderAPI.setPlaceholders(player, plugin.getSettingsManager().getMessageSettings().getMessage("dynmapVanishMessage")));
+                    dynmapPlugin.sendBroadcastToWeb("", plugin.getSettingsManager().getMessageSettings().getMessage("dynmapVanishMessage"));
                 }
             }
         }
@@ -94,7 +93,7 @@ public class DynmapHook implements PluginHook, Listener {
             if(dynmapPlugin != null){
                 if(hookSettings.getBoolean("hideVanishPlayersOnMap", settingsSection))dynmapPlugin.setPlayerVisiblity(player, true);
                 if(hookSettings.getBoolean("broadCastFakeJoinOnReappear", settingsSection)){
-                    dynmapPlugin.sendBroadcastToWeb("", PlaceholderAPI.setPlaceholders(player, plugin.getSettingsManager().getMessageSettings().getMessage("dynmapReappearMessage")));
+                    dynmapPlugin.sendBroadcastToWeb("", plugin.getSettingsManager().getMessageSettings().getMessage("dynmapReappearMessage"));
                 }
             }
         }

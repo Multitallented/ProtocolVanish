@@ -46,15 +46,20 @@ public class PlayerJoinListener implements Listener {
         Player player = event.getPlayer();
         if (plugin.getVisibilityManager().isVanished(player.getUniqueId())) {
             VanishPlayer vanishPlayer = plugin.getVanishPlayer(player.getUniqueId());
-            if (vanishPlayer != null && vanishPlayer.getPlayerSettings().doNightVision())
-                player.addPotionEffect(new PotionEffect(PotionEffectType.NIGHT_VISION, Integer.MAX_VALUE, 1));
-            if (plugin.getSettingsManager().getMessageSettings().getHideRealJoinQuitMessages()) {
-                event.setJoinMessage("");
-                plugin.sendPlayerMessage(player, player, "joinedSilently");
+            if (vanishPlayer != null && player.getPotionEffect(PotionEffectType.INVISIBILITY) != null) {
+                vanishPlayer.setInvisPotion(true);
             }
-            for (Player viewer : Bukkit.getOnlinePlayers()) {
-                if (plugin.getPermissionManager().hasPermissionToSee(player, viewer) && messageSettings.getAnnounceVanishStateToAdmins() && player != viewer) {
-                    plugin.sendPlayerMessage(viewer, player,"otherJoinedSilently");
+            if (vanishPlayer != null && !vanishPlayer.isInvisPotion() && vanishPlayer.getPlayerSettings().doNightVision())
+                player.addPotionEffect(new PotionEffect(PotionEffectType.NIGHT_VISION, Integer.MAX_VALUE, 1));
+            if (vanishPlayer != null && !vanishPlayer.isInvisPotion()) {
+                if (plugin.getSettingsManager().getMessageSettings().getHideRealJoinQuitMessages()) {
+                    event.setJoinMessage("");
+                    plugin.sendPlayerMessage(player, player, "joinedSilently");
+                }
+                for (Player viewer : Bukkit.getOnlinePlayers()) {
+                    if (plugin.getPermissionManager().hasPermissionToSee(player, viewer) && messageSettings.getAnnounceVanishStateToAdmins() && player != viewer) {
+                        plugin.sendPlayerMessage(viewer, player,"otherJoinedSilently");
+                    }
                 }
             }
         }

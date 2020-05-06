@@ -34,8 +34,14 @@ import me.clip.placeholderapi.PlaceholderAPI;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Color;
+import org.bukkit.Location;
+import org.bukkit.Material;
 import org.bukkit.Particle;
+import org.bukkit.block.Block;
+import org.bukkit.block.BlockFace;
+import org.bukkit.block.data.BlockData;
 import org.bukkit.entity.Player;
+import org.bukkit.inventory.ItemStack;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
@@ -65,11 +71,6 @@ public final class ProtocolVanish extends JavaPlugin {
             Bukkit.getServer().getPluginManager().disablePlugin(this);
             return;
         }
-        if (!Bukkit.getServer().getPluginManager().isPluginEnabled("PlaceholderAPI")) {
-            this.getLogger().severe("PlaceholderAPI isn't present, please install PlaceholderAPI! Shutting down...");
-            Bukkit.getServer().getPluginManager().disablePlugin(this);
-            return;
-        }
         this.updateChecker = new UpdateChecker(this);
         this.settingsManager = new SettingsManager(this);
         if(!settingsManager.areFilesUpToDate())return;
@@ -79,7 +80,7 @@ public final class ProtocolVanish extends JavaPlugin {
         this.permissionManager = new PermissionManager(this);
         this.visibilityManager = new VisibilityManager(this);
         this.hookManager = new HookManager(this);
-        this.vanishCommand = new VanishCommand(this);
+//        this.vanishCommand = new VanishCommand(this);
 
         this.getLogger().info("Registering events...");
         new PlayerLoginListener(this);
@@ -98,24 +99,90 @@ public final class ProtocolVanish extends JavaPlugin {
                     VanishPlayer vanishPlayer = getVanishPlayer(player.getUniqueId());
                     if (vanishPlayer == null) vanishPlayer = createVanishPlayer(player);
                     PotionEffect potionEffect = player.getPotionEffect(PotionEffectType.INVISIBILITY);
-                    if (!vanishPlayer.isVanished() && potionEffect != null) {
+                    if (!vanishPlayer.isVanished() && potionEffect != null && !vanishPlayer.isInvisPotion()) {
                         vanishPlayer.setInvisPotion(true);
                         vanishPlayer.getPlayerSettings().setNightVision(false);
                         visibilityManager.setVanished(player.getUniqueId(), true);
-                    } else if (potionEffect == null && vanishPlayer.isVanished() && vanishPlayer.isInvisPotion()) {
-                        visibilityManager.setVanished(player.getUniqueId(), false);
+                    } else if (potionEffect == null && vanishPlayer.isInvisPotion()) {
+                        if (vanishPlayer.isVanished()) {
+                            visibilityManager.setVanished(player.getUniqueId(), false);
+                        }
                         vanishPlayer.getPlayerSettings().setNightVision(
                                 getSettingsManager().getInvisibilitySettings().getNightVisionEffect());
                         vanishPlayer.setInvisPotion(false);
                     } else if (potionEffect != null && vanishPlayer.isInvisPotion()) {
-                        Particle.DustOptions dustOptions = new Particle.DustOptions(Color.GRAY, 1);
-                        player.getWorld().spawnParticle(Particle.SPELL, player.getLocation(), 1, dustOptions);
+                        boolean shouldBeVanished = shouldPlayerBeVanished(player);
+                        if (vanishPlayer.isVanished() && !shouldBeVanished) {
+                            visibilityManager.setVanished(player.getUniqueId(), false);
+                        } else if (!vanishPlayer.isVanished() && shouldBeVanished) {
+                            visibilityManager.setVanished(player.getUniqueId(), true);
+                        }
+                        if (vanishPlayer.isVanished()) {
+                            spawnParticles(player);
+                        }
                     }
                 }
             }
         },  100L, 20L);
 
+        Bukkit.getScheduler().scheduleSyncRepeatingTask(this, new Runnable() {
+            @Override
+            public void run() {
+                for (Player player : Bukkit.getOnlinePlayers()) {
+                    if (!player.isSprinting()) {
+                        continue;
+                    }
+                    VanishPlayer vanishPlayer = getVanishPlayer(player.getUniqueId());
+                    if (vanishPlayer == null) vanishPlayer = createVanishPlayer(player);
+                    if (vanishPlayer.isVanished() && vanishPlayer.isInvisPotion()) {
+                        Block block = player.getLocation().getBlock().getRelative(BlockFace.DOWN);
+                        if (block.getType() != Material.AIR) {
+                            BlockData blockData = block.getBlockData();
+                            player.getWorld().spawnParticle(Particle.BLOCK_DUST, player.getLocation(), 10, blockData);
+                        }
+                    }
+                }
+            }
+        }, 100L, 4L);
+
         VanishAPI.setPlugin(this);
+    }
+
+    private void spawnParticles(Player player) {
+        Location spellParticleLocation = new Location(player.getWorld(), player.getLocation().getX(),
+                player.getLocation().getY() + 1, player.getLocation().getZ());
+        player.getWorld().spawnParticle(Particle.SPELL, spellParticleLocation, 1);
+    }
+
+    private boolean shouldPlayerBeVanished(Player player) {
+        boolean isOnFire = player.getFireTicks() > 0;
+        if (isOnFire) {
+            return false;
+        }
+        boolean isNaked = isItemSlotEmpty(player.getInventory().getItemInMainHand()) &&
+                isItemSlotEmpty(player.getInventory().getHelmet()) &&
+                isItemSlotEmpty(player.getInventory().getChestplate()) &&
+                isItemSlotEmpty(player.getInventory().getLeggings()) &&
+                isItemSlotEmpty(player.getInventory().getBoots());
+        if (!isNaked) {
+            return false;
+        }
+
+        boolean isTooCloseToAnotherPlayer = false;
+        for (Player player1 : Bukkit.getOnlinePlayers()) {
+            if (player.equals(player1) || !player.getWorld().equals(player1.getWorld())) {
+                continue;
+            }
+            if (player.getLocation().distanceSquared(player1.getLocation()) < 16) {
+                isTooCloseToAnotherPlayer = true;
+                break;
+            }
+        }
+        return !isTooCloseToAnotherPlayer;
+    }
+
+    private boolean isItemSlotEmpty(ItemStack itemStack) {
+        return itemStack == null || itemStack.getType() == Material.AIR;
     }
 
     public UpdateChecker getUpdateChecker(){
@@ -207,21 +274,23 @@ public final class ProtocolVanish extends JavaPlugin {
      * @param messagePath The path of the message in the MessageSettings.
      */
     public void sendPlayerMessage(Player receiver, Player placeholderPlayer,  String messagePath){
-        String rawMessage = settingsManager.getMessageSettings().getMessage(messagePath);
-        String message = PlaceholderAPI.setPlaceholders(placeholderPlayer, rawMessage);
-        if(message.startsWith("[JSON]")){
-            try {
-                String jsonString = message.replace("[JSON]", "").trim();
-                WrappedChatComponent chatComponent = WrappedChatComponent.fromJson(jsonString);
-                PacketContainer packet = new PacketContainer(PacketType.Play.Server.CHAT);
-                packet.getChatTypes().write(0, EnumWrappers.ChatType.CHAT);
-                packet.getChatComponents().write(0, chatComponent);
-                ProtocolLibrary.getProtocolManager().sendServerPacket(receiver, packet);
-            }catch (InvocationTargetException ex){
-                ex.printStackTrace();
-            }
-        }
-        receiver.sendMessage(ChatColor.translateAlternateColorCodes('&', message));
+        return;
+//        String message = settingsManager.getMessageSettings().getMessage(messagePath);
+//        message = message.replace("%playername%", placeholderPlayer.getDisplayName());
+////        String message = PlaceholderAPI.setPlaceholders(placeholderPlayer, rawMessage);
+//        if(message.startsWith("[JSON]")){
+//            try {
+//                String jsonString = message.replace("[JSON]", "").trim();
+//                WrappedChatComponent chatComponent = WrappedChatComponent.fromJson(jsonString);
+//                PacketContainer packet = new PacketContainer(PacketType.Play.Server.CHAT);
+//                packet.getChatTypes().write(0, EnumWrappers.ChatType.CHAT);
+//                packet.getChatComponents().write(0, chatComponent);
+//                ProtocolLibrary.getProtocolManager().sendServerPacket(receiver, packet);
+//            }catch (InvocationTargetException ex){
+//                ex.printStackTrace();
+//            }
+//        }
+//        receiver.sendMessage(ChatColor.translateAlternateColorCodes('&', message));
     }
 
 }

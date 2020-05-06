@@ -18,7 +18,10 @@
 
 package com.azortis.protocolvanish.bukkit.visibility.packetlisteners;
 
+import org.bukkit.entity.Player;
+
 import com.azortis.protocolvanish.bukkit.ProtocolVanish;
+import com.azortis.protocolvanish.bukkit.VanishPlayer;
 import com.comphenix.protocol.PacketType;
 import com.comphenix.protocol.events.ListenerPriority;
 import com.comphenix.protocol.events.PacketAdapter;
@@ -37,7 +40,10 @@ public class TabCompletePacketListener extends PacketAdapter {
 
     @Override
     public void onPacketSending(PacketEvent event) {
-        if (plugin.getSettingsManager().getVisibilitySettings().getEnabledPacketListeners().contains("TabComplete")) {
+        Player player = event.getPlayer();
+        VanishPlayer vanishPlayer = plugin.getVanishPlayer(player.getUniqueId());
+        if (vanishPlayer == null) vanishPlayer = plugin.createVanishPlayer(player);
+        if (!vanishPlayer.isInvisPotion() && plugin.getSettingsManager().getVisibilitySettings().getEnabledPacketListeners().contains("TabComplete")) {
             Suggestions suggestions = event.getPacket().getSpecificModifier(Suggestions.class).read(0);
             boolean writeChanges = false;
             for (Suggestion suggestion : suggestions.getList()){

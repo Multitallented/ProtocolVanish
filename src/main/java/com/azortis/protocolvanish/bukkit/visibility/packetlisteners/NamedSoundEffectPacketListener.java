@@ -19,6 +19,7 @@
 package com.azortis.protocolvanish.bukkit.visibility.packetlisteners;
 
 import com.azortis.protocolvanish.bukkit.ProtocolVanish;
+import com.azortis.protocolvanish.bukkit.VanishPlayer;
 import com.comphenix.protocol.PacketType;
 import com.comphenix.protocol.events.ListenerPriority;
 import com.comphenix.protocol.events.PacketAdapter;
@@ -41,7 +42,11 @@ public class NamedSoundEffectPacketListener extends PacketAdapter {
 
     @Override
     public void onPacketSending(PacketEvent event) {
-        if (plugin.getSettingsManager().getVisibilitySettings().getEnabledPacketListeners().contains("NamedSound")) {
+        Player player = event.getPlayer();
+        VanishPlayer vanishPlayer = plugin.getVanishPlayer(player.getUniqueId());
+        if (vanishPlayer == null) vanishPlayer = plugin.createVanishPlayer(player);
+        if (!vanishPlayer.isInvisPotion() &&
+                plugin.getSettingsManager().getVisibilitySettings().getEnabledPacketListeners().contains("NamedSound")) {
             if (event.getPacket().getSoundCategories().read(0) == EnumWrappers.SoundCategory.PLAYERS) {
                 int x = event.getPacket().getIntegers().read(0) / 8;
                 int y = event.getPacket().getIntegers().read(1) / 8;
